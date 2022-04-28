@@ -1,5 +1,4 @@
-from asyncio import SendfileNotAvailableError
-from urllib import response
+
 import requests
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -14,9 +13,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 import numpy as np
 import json
+from flask import Flask, render_template
+import io
+from flask import Response
 
 
 
@@ -36,8 +37,6 @@ payload = {
 #CACHING
 
 CACHE_FILE_NAME = 'strava_cache.json'
-
-
 
 def load_cache():
   try: 
@@ -113,6 +112,7 @@ activities = activities.astype({'moving_time':'int'})
 
 
 #CREATING SUBDATASETS
+
 runs = activities.loc[activities['type'] == 'Run']
 bikes = activities.loc[activities['type'] == 'Ride']
 
@@ -121,36 +121,80 @@ bikes = activities.loc[activities['type'] == 'Ride']
 
 #CREATING PLOTS 
 
-plt.plot(runs['start_date_local'], (runs['distance']/1609.344), color='red', marker='o')
-plt.title('Distance Vs Date', fontsize=14)
-plt.xlabel('Date', fontsize=14)
-plt.ylabel('Distance in Miles', fontsize=14)
-plt.grid(True)
+# plt.plot(runs['start_date_local'], (runs['distance']/1609.344), color='blue', marker='o')
+# plt.title('Distance Vs Date', fontsize=14)
+# plt.xlabel('Date', fontsize=14)
+# plt.ylabel('Distance (Miles)', fontsize=14)
+# plt.grid(True)
+# # plt.savefig('/static/styles/dis.png')
+# # plt.show()
+
+# plt.plot(runs['start_date_local'], (runs['average_speed']*2.237), color='blue', marker='o')
+# plt.title('Average Speed over Time', fontsize=14)
+# plt.xlabel('Date', fontsize=14)
+# plt.ylabel('Average Speed (mph)', fontsize=14)
+# plt.grid(True)
+# plt.savefig('speedovertime_1.png')
 # plt.show()
 
-plt.plot(runs['start_date_local'], (runs['average_speed']/60), color='red', marker='o')
-plt.title('Average Speed Vs Date', fontsize=14)
-plt.xlabel('Date', fontsize=14)
-plt.ylabel('Distance in Miles', fontsize=14)
-plt.grid(True)
-plt.show()
 
-fig = plt.figure(figsize=(10,7))
-ax = fig.add_axes([0,0,1,1])
-ax.bar(activities['type'],activities['total_elevation_gain'])
-fig.xlabel('Type of Activity')
-fig.ylabel('Elevation Gain')
-fig.title("Elevation gain by activity type")
-plt.show()
+# plt.plot(runs['start_date_local'], (runs['moving_time']/60), color='blue', marker='o')
+# plt.title('Average Moving Time Vs Date', fontsize=14)
+# plt.xlabel('Date', fontsize=14)
+# plt.ylabel('Average Moving Time (mins)', fontsize=14)
+# plt.grid(True)
+# # plt.savefig('movingtime.png')
+# # plt.show()
 
-plt.plot((runs['distance']/1609.344), runs['max_speed'],  color='red', marker='o')
-plt.title('Elevation gain Vs Distance', fontsize=14)
-plt.xlabel('Max Speed', fontsize=14)
-plt.ylabel('Distance in Miles', fontsize=14)
-plt.grid(True)
+# plt.plot(runs['start_date_local'], (runs['total_elevation_gain']), color='blue', marker='o')
+# plt.title('Date Vs Elevation Gain', fontsize=14)
+# plt.xlabel('Date', fontsize=14)
+# plt.ylabel('Elevation Gain', fontsize=14)
+# plt.grid(True)
+# # plt.savefig('elegain.png')
+# # plt.show()
+
+# type = activities['type']
+# ele_gain = activities['total_elevation_gain']
+# plt.xlabel('Type')
+# plt.ylabel('Elevation Gain')
+# plt.title('Elevation gain by activity type')
+# plt.bar(type, ele_gain)
+# # plt.savefig('barelegain.png')
+# # plt.show()
+
+# type = activities['type']
+# speed = (activities['max_speed']*2.237)
+# plt.xlabel('Type')
+# plt.ylabel('Max Speed (mph)')
+# plt.title('Max speed by activity type')
+# plt.bar(type, speed)
+# # plt.savefig('barspeed.png')
+# # plt.show()
+
+# achievement = activities['achievement_count']
+# distance = (activities['distance']/1609.344)
+# plt.xlabel('Achievements')
+# plt.ylabel('Distance (miles)')
+# plt.title('Achievments by Distance')
+# plt.bar(achievement, distance)
+# plt.savefig('barachievement_1.png')
 # plt.show()
 
-#CREATING GRAPH/TREE
+# distance_1 = (runs['distance']/1609.344)
+# avg_speed = (runs['average_speed']*2.237)
+# plt.xlabel('Distance (miles)')
+# plt.ylabel('Average Speed (mph)')
+# plt.title('Average speed by distance for Runs')
+# plt.bar(distance_1, avg_speed)
+# # plt.savefig('bardis.png')
+# # plt.show()
+
+
+
+
+
+# #CREATING GRAPH/TREE
 class BST:
   def __init__(self, key):
     self.key = key
@@ -176,17 +220,69 @@ moving_time_lst_r = (runs['moving_time']/60)
 moving_time_lst_r = moving_time_lst_r.astype(int)
 # print(f'moving type {moving_time_lst.dtypes}')
 # print(moving_time_lst_r)
-# root_r = BST(int(input("Running \n Enter a time in minutes: ")))
+root_r = BST(int(input("Running \n Enter a time in minutes: ")))
 
-# for i in moving_time_lst_r:
-#   root_r.insert(i)
+for i in moving_time_lst_r:
+  root_r.insert(i)
 
 
 moving_time_lst_b = (bikes['moving_time']/60)
 moving_time_lst_b = moving_time_lst_b.astype(int)
 # print(f'moving type {moving_time_lst.dtypes}')
 # print(moving_time_lst_b)
-# root_b = BST(int(input("Biking \n Enter a time in minutes: ")))
+root_b = BST(int(input("Biking \n Enter a time in minutes: ")))
 
-# for i in moving_time_lst_b:
-#   root_b.insert(i)
+for i in moving_time_lst_b:
+  root_b.insert(i)
+
+#FLASK APP
+
+app = Flask(__name__)
+
+@app.route('/')
+
+def homepage():
+    return render_template('index.html')
+
+@app.route('/graphs')
+
+def plotChart():
+
+
+  return render_template('activities.html')
+
+
+# @app.route('/<name>')
+
+# def name(name):
+#     return render_template('name.html', name = name)
+
+if __name__ == '__main__':
+    print('start strava app', app.name)
+    app.run(debug=True)
+
+
+
+#SAVING TREE
+# def isLeaf(tree):
+#     if tree[1] is None and tree[2] is None:
+#         return True
+#     else:
+#         return False
+# def yes(prompt):
+#     print(prompt)
+#     answer = input()
+#     if answer.lower() == 'yes' or answer.lower() == "yea" or answer.lower() == "yep" or answer.lower() == "yup": 
+#         return True
+#     else: 
+#         return False 
+
+# def saveTree(tree, treeFile):
+#     if isLeaf(tree):
+#         print("Leaf", file = treeFile)
+#         print(tree[0], file = treeFile)
+#     else:
+#         print("Internal node", file = treeFile)
+#         print(tree[0], file = treeFile)
+#         saveTree(tree[1], treeFile)
+#         saveTree(tree[2], treeFile)
